@@ -1,0 +1,61 @@
+rm(list = ls())
+library(terra)
+library(ape)
+
+presab_realms <- function(sp, pol, ras) {
+  s <- split(pol, pol$cluster)
+  l <- lapply(s, function(x) {
+    realmID <- unique(x$realms)
+    y <- rasterize(x, ras, field="realms")
+    y <- y+1
+    sm <- sum(sp, y)
+    if(max(values(sm), na.rm = TRUE)>1) {
+      sm[sm==1] <- NA
+      sm[sm==2] <- 1
+      g <- global(sm, "sum", na.rm=TRUE)[[1]]/global(sp, "sum", na.rm=TRUE)[[1]]
+      if(g>0.05) {
+        data.frame(grids=names(sp), species=realmID, proportion=g)
+      }
+    }
+  })
+  do.call(rbind, l)
+}
+
+pj <- "+proj=wag4"
+u <- "/Users/bdaru/Dropbox/Projects/Stanford/publications/17_biodiversity_origin/database/"
+r <- rast(paste0(u, "geodata/blanks/blank20km.tif"))
+v <- vect(paste0(u, "geodata/present_phylorealms/present.json")) |> project(pj)
+
+v$realms <- c("Circumboreal", "Saharo_Arabian", "Indo_Malay", "Afrotropic", 
+              "Amazonian", "Patagonian", "Australasian", "Madagascan", 
+              "Neocaledonian", "Neozylandic")
+#plot(v, "realms", type="classes")
+#text(v, v$realms)
+
+d <- data.table::fread(paste0(u, "geodata/plant_occurrence_data/plant_presab_wag4.csv"))
+
+f <- split(d, d$species)
+
+r1 <- r
+values(r1) <- paste0("v", seq_len(ncell(r1)))
+
+l <- lapply(f[1:5000], function(x) {
+  nmsp <- unique(x$species)
+  x$sr <- 1
+  y <- x$sr
+  names(y) <- x$grids
+  r2 <- r1
+  i <- match(as.data.frame(r2)[[1]], names(y))
+  z <- setValues(r2, y[i])
+  z[is.na(z)] <- 0
+  z <- crop(z, r, mask=TRUE)
+  names(z) <- nmsp
+  presab_realms(sp=z, pol = v, ras = r)
+})
+
+out <- do.call(rbind, l)
+#out <- long2dense(hh)
+#out <- data.frame(species = rownames(out), out)
+write.csv(out, paste0(u, "DEC/OUTPUT/region_classification/plant_region_classification.csv"), row.names = FALSE)
+
+
