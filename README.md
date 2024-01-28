@@ -1,4 +1,4 @@
-# origin
+# biotic interchange
 To explore biotic interchange by testing for dispersal events among different biomes and the directionality of the transitions
 To explore the timing of the biotic interchange
 To explore which biomes serve as primary sources and sinks of biodiversity (i.e., providers and receivers of lineages)
